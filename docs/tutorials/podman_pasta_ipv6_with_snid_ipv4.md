@@ -201,23 +201,20 @@ ExecStart=/bin/bash -c 'cd /opt/snid && ./snid -listen tcp:172.16.1.10:443 -mode
 WantedBy=multi-user.target
 ```
 
-Reload Systemd, enable and Start the Services:
+Reload Systemd Daemon
 ```
-# Reload Systemd Daemon
 systemctl daemon-reload
+```
 
-# Enable Services
-systemctl enable snid-routes.service
-systemctl enable snid-server.service
+Enable Services
+```
+systemctl enable --now snid-routes.service snid-server.service
+```
 
-# Check for potential Errors
+Check for Errors:
+```
 systemctl restart snid-server.service
 systemctl status snid-server.service
-journalctl -xeu snid-server.service
-
-# Check for potential Errors
-systemctl status snid-routes.service
-journalctl -xeu snid-routes.service
 ```
 
 # IPv6 Networking Setup
@@ -363,23 +360,21 @@ This is also due to the Fact that I am self-managing the Letsencrypt Certificate
 
 Your mileage may vary :).
 
+`Caddyfile`:
 ```
 # Example and Guide
 # https://caddyserver.com/docs/caddyfile/options
 
 # General Options
 {
-    # Debug Mode
+    # (Optional) Debug Mode
     debug
 
-    # Ports Configuration
-    #http_port 80
-    #https_port 443
-
     # TLS Options
+    # (Optional) Disable Certificates Management (only if SSL/TLS Certificates are managed by certbot or other external Tools)
     auto_https disable_certs
 
-    # Default SNI
+    # (Optional) Default SNI
     default_sni MYDOMAIN.TLD
 }
 
@@ -388,6 +383,7 @@ localhost {
 	reverse_proxy /api/* localhost:9001
 }
 
+# (Optional) Only if SSL/TLS Certificates are managed by certbot or other external Tools and Custom Logging is required
 ${HOSTNAME} {
         tls /certificates/MYDOMAIN.TLD/fullchain.pem /certificates/MYDOMAIN.TLD/privkey.pem
         log {
@@ -458,7 +454,7 @@ services:
 
 # General Options
 {
-    # Debug Mode
+    # (Optional) Debug Mode
     debug
 }
 
@@ -467,7 +463,7 @@ http:// {
   bind tcp4/172.16.1.10
   redir https://{host}{uri} 308
 
-# Logging
+# (Optional) Logging
   log {
 	output file /var/log/access.json {
 		roll_size 100MiB
@@ -482,15 +478,12 @@ http:// {
 
 Note that:
 - When using the Normal Ports Section and the Pasta Minimal Line, `podman ps` will show the Open Ports in its Output.
-- When using the Pasta Extended Line, `podman ps` will NOT show the Open Ports in its Output. In fact, `podman inspect <container>` will NOT list the IP Addresses nor where the Ports are bound to. This works correctly, but the only way to examine if the Port is used is to run `ss -nlt6`.
+- When using the Pasta Extended Line, `podman ps` will NOT show the Open Ports in its Output. In fact, `podman inspect <container>` will NOT list the IP Addresses nor where the Ports are bound to. This works correctly, but the only way to examine if the Port is used is to run `ss -nlt4`.
 
 
 ## HTTP -> HTTPs for IPv6 Redirects
-"Native" IPv6 Redirects are Handled by Caddy Proxy listening on the Configured IPv6 Address.
-
-This is already described in the Application `compose.yml` File described Previously.
-
-The Redirect itself is setup by Caddy automatically by Default (see https://caddyserver.com/docs/automatic-https).
+"Native" IPv6 Redirects are automatically Handled by Caddy Proxy listening on the Configured IPv6 Address.
+See [Caddy Documentation](https://caddyserver.com/docs/automatic-https).
 
 # Run the Application
 Simply Run

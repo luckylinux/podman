@@ -250,6 +250,38 @@ In this way, the `compose.yml` can be evaluated with the `${APPLICATION_IPV6_ADD
 podman-compose config
 ```
 
+## Using Default Caddy Configuration
+In case of standard Setup (Caddy is managing the SSL/TLS Certificates by itself using the HTTP Challenge, default Log Settings, ...) the `compose.yml` File is quite Short and there is NO NEED for a `Caddyfile`.
+
+`compose.yml` File:
+```
+services:
+  whoami-caddy:
+    image: caddy:latest
+    command: caddy reverse-proxy --from ${HOSTNAME} --to 'http://[::1]:8080'
+    network_mode: "pasta:--ipv6-only"
+    ports:
+      - "[${APPLICATION_IPV6_ADDRESS}]:80:80/tcp"
+      - "[${APPLICATION_IPV6_ADDRESS}]:443:443/tcp"
+      - "[${APPLICATION_IPV6_ADDRESS}]:443:443/udp"
+    volumes:
+      - caddy-data:/data
+
+  whoami-application:
+    image: traefik/whoami
+    network_mode: "service:whoami-caddy"
+    environment:
+      - WHOAMI_PORT_NUMBER=8080
+
+volumes:
+  caddy-data:
+```
+
+## Using Customized Caddy Configuration
+In case of special Requirements (e.g. you are managing the Certificates using external Tools such as `certbot`, you want custom Logging Directives, ...), then the `compose.yml` File will be a bit more Complex.
+
+You will also (probably) require a `Caddyfile` to setup the Custom Directives.
+
 `compose.yml` File:
 ```
 services:
@@ -340,14 +372,19 @@ tcp6       0      0 :::22                   :::*                    LISTEN
 ```
 
 # Caddy Proxy Configuration
-For Simple Configurations of Applications and automatically generating a SSL Certificate using Letsencrypt with the HTTP(S) Challenge, one can just define `command` within the `compose.yml` File to something like:
+## Using Default Caddy Configuration
+For Simple Configurations of Applications and automatically generating a SSL Certificate using Letsencrypt with the HTTP Challenge, one can just define `command` within the `compose.yml` File to something like:
 ```
 command: reverse-proxy --from ${HOSTNAME} --to 'http//[::1]:8080'
 ```
 
+And there is NO NEED for a separate `Caddyfile`.
+
+## Using Customized Caddy Configuration
 For semi-automated Setups, one can use the `lucaslorentz/caddy-docker-proxy` Docker Image, which allows to set Caddy Options directly within the `compose.yml` File.
 
-I am NOT used to this Syntax, so I am just using the Caddyfile, at least for now.
+I am using the Caddyfile, at least for now, where I can have better control of the Caddy Directives.
+
 This is also due to the Fact that I am self-managing the Letsencrypt Certificates using `certbot` and distributing them across my Infrastructure.
 
 Your mileage may vary :).
@@ -370,25 +407,26 @@ Your mileage may vary :).
     default_sni MYDOMAIN.TLD
 }
 
-
 localhost {
 	reverse_proxy /api/* localhost:9001
 }
 
 # (Optional) Only if SSL/TLS Certificates are managed by certbot or other external Tools and Custom Logging is required
 ${HOSTNAME} {
-        tls /certificates/MYDOMAIN.TLD/fullchain.pem /certificates/MYDOMAIN.TLD/privkey.pem
-        log {
-		output file /var/log/${HOSTNAME}/access.json {
-			roll_size 100MiB
-			roll_keep 5000
-			roll_keep_for 720h
+    tls /certificates/MYDOMAIN.TLD/fullchain.pem /certificates/MYDOMAIN.TLD/privkey.pem
+    
+    log {
+		    output file /var/log/${HOSTNAME}/access.json {
+		        roll_size 100MiB
+		        roll_keep 5000
+		        roll_keep_for 720h
             roll_uncompressed
-		}
+		    }
+    
         format json
-	}
+	  }
 
-    reverse_proxy http://[::1]:8080
+  reverse_proxy http://[::1]:8080
 }
 ```
 

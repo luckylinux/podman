@@ -328,6 +328,7 @@ LISTEN      0           128                                    [::]:22          
 ```
 
 Example Output for `netstat -Wan -t6`:
+```
 Active Internet connections (servers and established)
 Proto Recv-Q Send-Q Local Address           Foreign Address         State      
 tcp6       0      0 2001:db8:0000:0001::1:1:80 :::*                    LISTEN     
@@ -336,6 +337,7 @@ tcp6       0      0 :::9090                 :::*                    LISTEN
 tcp6       0      0 :::5000                 :::*                    LISTEN     
 tcp6       0      0 :::5355                 :::*                    LISTEN     
 tcp6       0      0 :::22                   :::*                    LISTEN  
+```
 
 # Caddy Proxy Configuration
 For Simple Configurations of Applications and automatically generating a SSL Certificate using Letsencrypt with the HTTP(S) Challenge, one can just define `command` within the `compose.yml` File to something like:

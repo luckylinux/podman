@@ -166,8 +166,8 @@ Description=SNID Routes Setup Service
 [Service]
 #Type=oneshot
 User=root
-ExecStart=/bin/bash -c 'ip route replace local 64:ff9b:1::/96 dev lo'
-ExecStop=/bin/bash -c 'ip route del local 64:ff9b:1::/96 dev lo'
+ExecStart=ip route replace local 64:ff9b:1::/96 dev lo
+ExecStop=ip route del local 64:ff9b:1::/96 dev lo
 RemainAfterExit=yes
 
 [Install]

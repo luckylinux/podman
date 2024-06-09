@@ -22,6 +22,9 @@ This Tutorial will illustrate how all of this can be achieved using `pasta`, `sn
 
 A similar Result can probably be achieved using Quadlets or Podlets instead of `systemd` and `podman-compose`.
 
+# Version Information
+This Tutorial has been written while working on Fedora 40 with Podman 5.0.3 (with recent update to Podman 5.1.0).
+
 # Pasta Networking
 > **Warning**  
 > 
@@ -362,9 +365,36 @@ services:
       - WHOAMI_PORT_NUMBER=8080
 ```
 
-> **Warning**  
-> 
-> Netstat is deprecated. `netstat -an | grep -i listen` will NOT return the correct IPv6 Addresses in most cases, because it truncates the Output. `netstat -Wan | grep -i listen` will return the full IPv6 Address wthout truncating it, but you should really be using `ss -nlt6` instead.
+## Debugging Port Binding
+Note that `netstat` is deprecated. You **really** should be using `ss -nlt` instead.
+
+That being said, `netstat -an -t` will NOT return the correct IPv6 Addresses in most cases, because it truncates the Output. `netstat -Wan -t` (Note the `-W` additional Argument) will return the full IPv6 Address wthout truncating it.
+
+To check that The Services bind to the Correct IP Address and Port:
+- IPv4 + IPv6: `ss -nlt` (or `netstat -Wan -t`)
+- IPv4 Only: `ss -nlt4` (or `netstat -Wan -t4`)
+- IPv6 Only: `ss -nlt6` (or `netstat -Wan -t6`)
+
+Example Output for `ss -nlt6`:
+```
+State       Recv-Q      Send-Q                        Local Address:Port             Peer Address:Port      
+LISTEN      0           128                [2001:db8:0000:0001::1:1]:80                       [::]:*         
+LISTEN      0           128                [2001:db8:0000:0001::1:1]:443                      [::]:*         
+LISTEN      0           4096                                      *:9090                        *:*         
+LISTEN      0           128                                       *:5000                        *:*         
+LISTEN      0           4096                                   [::]:5355                     [::]:*         
+LISTEN      0           128                                    [::]:22                       [::]:*   
+```
+
+Example Output for `netstat -Wan -t6`:
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+tcp6       0      0 2001:db8:0000:0001::1:1:80 :::*                    LISTEN     
+tcp6       0      0 2001:db8:0000:0001::1:1:443 :::*                    LISTEN     
+tcp6       0      0 :::9090                 :::*                    LISTEN     
+tcp6       0      0 :::5000                 :::*                    LISTEN     
+tcp6       0      0 :::5355                 :::*                    LISTEN     
+tcp6       0      0 :::22                   :::*                    LISTEN  
 
 # Caddy Proxy Configuration
 For Simple Configurations of Applications and automatically generating a SSL Certificate using Letsencrypt with the HTTP(S) Challenge, one can just define `command` within the `compose.yml` File to something like:

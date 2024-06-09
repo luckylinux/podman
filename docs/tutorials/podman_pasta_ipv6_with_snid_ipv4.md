@@ -103,6 +103,7 @@ apt install golang-go
 #### Build and Install
 Build the Program and install it in the `/opt/snid` Folder:
 ```
+mkdir -p /opt/snid
 GOBIN="/opt/snid" go install src.agwa.name/snid@latest
 ```
 
@@ -128,7 +129,7 @@ Since the Routes are Setup in less than a Second and, after that, `snid` is run 
 Furthermore concerning the User Account Setup (it is preferable to use a different User compared to the one running the Podman Containers, for the Reasons outlined above):
 ```
 groupadd snid
-useradd --shell /usr/sbin/nologin -g snid --base-dir /opt/snid snid
+useradd --shell /usr/sbin/nologin -g snid -c snid --base-dir /opt snid
 chown snid:snid /opt/snid/snid
 chmod 0770 /opt/snid/snid
 ```

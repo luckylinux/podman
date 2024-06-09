@@ -264,9 +264,6 @@ In this way, the `compose.yml` can be evaluated with the `${APPLICATION_IPV6_ADD
 podman-compose config
 ```
 
-## Compose with Port Mapping + Minimal Pasta Line
-With this Method, `podman ps` will show the Open Ports in its Output.
-
 ```
 services:
   whoami-caddy:
@@ -278,6 +275,7 @@ services:
     security_opt:
       - no-new-privileges:true
       - label=type:container_runtime_t
+    # Ports Section (DISABLE if using the Pasta Extended Line)
     ports:
       - target: 80
         host_ip: "[${APPLICATION_IPV6_ADDRESS}]"
@@ -291,7 +289,10 @@ services:
         host_ip: "[${APPLICATION_IPV6_ADDRESS}]"
         published: 443
         protocol: udp
+    # Pasta Minimal Line (ENABLE the Normal Ports Section above if using this Method)
     network_mode: "pasta:--ipv6-only"
+    # Pasta Extended Line (DISABLE the Normal Ports Section above if using this Method)
+    # network_mode: "pasta:--ipv6-only,-t,${APPLICATION_IPV6_ADDRESS}/80,-t,${APPLICATION_IPV6_ADDRESS}/443,-u,${APPLICATION_IPV6_ADDRESS}/443"
     volumes:
  #     - /run/user/1001/podman/podman.sock:/var/run/docker.sock:rw,z
       - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
@@ -313,12 +314,13 @@ services:
       - WHOAMI_PORT_NUMBER=8080
 ```
 
+Note that:
+- When using the Normal Ports Section and the Pasta Minimal Line, `podman ps` will show the Open Ports in its Output.
+- When using the Pasta Extended Line, `podman ps` will NOT show the Open Ports in its Output. In fact, `podman inspect <container>` will NOT list the IP Addresses nor where the Ports are bound to. This works correctly, but the only way to examine if the Port is used is to run `ss -nlt6`.
+
+
 ## Compose with only Pasta Line
-With this Method, `podman ps` will NOT show the Open Ports in its Output.
 
-In fact, `podman inspect <container>` will NOT list the IP Addresses nor where the Ports are bound to.
-
-This works correctly, but the only way to examine if the Port is used is to run `ss -nlt6`.
 
 ```
 services:
@@ -475,7 +477,7 @@ services:
     # Pasta Minimal Line (ENABLE the Normal Ports Section above if using this Method)
     network_mode: "pasta:--ipv4-only"
     # Pasta Extended Line (DISABLE the Normal Ports Section above if using this Method)
-    network_mode: "pasta:--ipv4-only,-t,172.16.1.10/80"
+    # network_mode: "pasta:--ipv4-only,-t,172.16.1.10/80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
       - ~/containers/data/redirect-http-ipv4-caddy:/data:rw,z
@@ -513,6 +515,11 @@ http:// {
   }
 }
 ```
+
+Note that:
+- When using the Normal Ports Section and the Pasta Minimal Line, `podman ps` will show the Open Ports in its Output.
+- When using the Pasta Extended Line, `podman ps` will NOT show the Open Ports in its Output. In fact, `podman inspect <container>` will NOT list the IP Addresses nor where the Ports are bound to. This works correctly, but the only way to examine if the Port is used is to run `ss -nlt6`.
+
 
 ## HTTP -> HTTPs for IPv6 Redirects
 "Native" IPv6 Redirects are Handled by Caddy Proxy listening on the Configured IPv6 Address.

@@ -188,15 +188,6 @@ For the Service Part, we just put a Condition that requires `snid-routes.service
 
 `/etc/systemd/system/snid-server.service`:
 ```
-# To get SNID to work:
-# - ip route add local the_nat46_prefix/96 dev lo
-# - nmcli connection modify lo +ipv6.routes "64:ff9b:1::/96 dev lo" -> NOT WORKING
-# - Backend CIDR: 2001:db8:0000:0001:0000:0000:0001:0001/112 (2001:db8:0000:0001:0000:0000:0001:0000 ... 2001:db8:0000:0001:0000:0000:0001:ffff)
-#
-# Convert IPv4 Address to IPv6 Address Representation: 
-# - https://www.agwa.name/blog/post/using_sni_proxying_and_ipv6_to_share_port_443
-# - https://www.rfc-editor.org/rfc/rfc6052
-
 [Unit]
 Description=SNID Server Service
 Requires=snid-routes.service
@@ -205,9 +196,6 @@ Requires=snid-routes.service
 User=snid
 Group=snid
 ExecStart=/bin/bash -c 'cd /opt/snid && ./snid -listen tcp:172.16.1.10:443 -mode nat46 -nat46-prefix 64:ff9b:1:: -backend-cidr 2001:db8:0000:0001:0000:0000:0001:0001/112'
-
-# Not currently used
-#ExecStop=/bin/bash -c 'cd /opt/snid'
 
 [Install]
 WantedBy=multi-user.target
@@ -467,7 +455,7 @@ The `snid` Service does NOT handle HTTP (non-HTTPS) Requests and does NOT bind t
 
 This Problem (IPv4 HTTP -> HTTPS Redirects) can easily be solved by using a one-off (for the entire Podman Host) Caddy Container.
 
-(Option 1) `compose.yml` with "Normal" Ports Mappings:
+`compose.yml`:
 ```
 services:
   redirect-http-ipv4-caddy:
@@ -478,45 +466,24 @@ services:
     security_opt:
       - no-new-privileges:true
       - label=type:container_runtime_t
+    # Ports Section (DISABLE if using the Pasta Extended Line)
     ports:
       - target: 80
         host_ip: 172.16.1.10
         published: 80
         protocol: tcp
+    # Pasta Minimal Line (ENABLE the Normal Ports Section above if using this Method)
     network_mode: "pasta:--ipv4-only"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
-      - ~/containers/data/redirect-http-ipv4-caddy:/data:rw,z
-      - ~/containers/log/redirect-http-ipv4-caddy:/var/log:rw,z
-      - ~/containers/config/redirect-http-ipv4-caddy:/config:rw,z
-      - ~/containers/certificates/letsencrypt:/certificates:ro,z
-    environment:
-      - CADDY_DOCKER_CADDYFILE_PATH=/etc/caddy/Caddyfile
-
-```
-
-(Option 2) `compose.yml` with "Pasta" One-Liner:
-```
-services:
-  redirect-http-ipv4-caddy:
-    image: caddy:latest
-    pull_policy: "missing"
-    container_name: redirect-http-ipv4-caddy
-    restart: "unless-stopped"
-    security_opt:
-      - no-new-privileges:true
-      - label=type:container_runtime_t
+    # Pasta Extended Line (DISABLE the Normal Ports Section above if using this Method)
     network_mode: "pasta:--ipv4-only,-t,172.16.1.10/80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
       - ~/containers/data/redirect-http-ipv4-caddy:/data:rw,z
       - ~/containers/log/redirect-http-ipv4-caddy:/var/log:rw,z
       - ~/containers/config/redirect-http-ipv4-caddy:/config:rw,z
-      - ~/containers/certificates/letsencrypt:/certificates:ro,z
     environment:
       - CADDY_DOCKER_CADDYFILE_PATH=/etc/caddy/Caddyfile
 ```
-
 
 `Caddyfile`:
 ```

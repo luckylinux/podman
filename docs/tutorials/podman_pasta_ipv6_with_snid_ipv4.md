@@ -251,7 +251,6 @@ Refer to [DNS Setup](https://github.com/luckylinux/podman-notes/blob/main/dns/dn
 # Compose File Setup
 Two different Approaches for the Compose File are Possible and both Work.
 
-## env File
 In order to simplify the Setup, it is Proposed to store the IP Address in an `.env` File.
 
 ```
@@ -264,6 +263,7 @@ In this way, the `compose.yml` can be evaluated with the `${APPLICATION_IPV6_ADD
 podman-compose config
 ```
 
+`compose.yml` File:
 ```
 services:
   whoami-caddy:
@@ -318,42 +318,6 @@ Note that:
 - When using the Normal Ports Section and the Pasta Minimal Line, `podman ps` will show the Open Ports in its Output.
 - When using the Pasta Extended Line, `podman ps` will NOT show the Open Ports in its Output. In fact, `podman inspect <container>` will NOT list the IP Addresses nor where the Ports are bound to. This works correctly, but the only way to examine if the Port is used is to run `ss -nlt6`.
 
-
-## Compose with only Pasta Line
-
-
-```
-services:
-  whoami-caddy:
-    image: caddy:latest
-    #image: lucaslorentz/caddy-docker-proxy:2.9-alpine
-    pull_policy: "missing"
-    container_name: whoami-caddy
-    restart: "unless-stopped"
-    security_opt:
-      - no-new-privileges:true
-      - label=type:container_runtime_t
-    network_mode: "pasta:--ipv6-only,-t,${APPLICATION_IPV6_ADDRESS}/80,-t,${APPLICATION_IPV6_ADDRESS}/443,-u,${APPLICATION_IPV6_ADDRESS}/443"
-    volumes:
- #     - /run/user/1001/podman/podman.sock:/var/run/docker.sock:rw,z
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
-      - ~/containers/data/whoami-caddy:/data:rw,z
-      - ~/containers/log/whoami-caddy:/var/log:rw,z
-      - ~/containers/config/whoami-caddy:/config:rw,z
-      - ~/containers/certificates/letsencrypt:/certificates:ro,z
-    environment:
-      - CADDY_DOCKER_CADDYFILE_PATH=/etc/caddy/Caddyfile
-
-  # Proxy to container
-  whoami-application:
-    image: traefik/whoami
-    pull_policy: "missing"
-    container_name: whoami-application
-    restart: "unless-stopped"
-    network_mode: "service:whoami-caddy"
-    environment:
-      - WHOAMI_PORT_NUMBER=8080
-```
 
 ## Debugging Port Binding
 Note that `netstat` is deprecated. You **really** should be using `ss -nlt` instead.

@@ -83,8 +83,30 @@ This Setup assumes that `snid` is installed on the Podman Host itself.
 
 Other Setups where `snid` is running e.g. in a separate KVM Virtual Machine are possible, but require setting up a Static Route from the Podman Host to `64:ff9b:1::/96` (otherwise the Application can be contacted by the Remote Client, but the Application will NOT be able to send any Reply to it).
 
-The easiest way to run `snid` is to download the precompiled Binary from the Official Website and setup a Systemd Service for it. Compiling `snid` from Source it's possible but it involves installing the `go` Development Toolchain, which is NOT the purpose of this Tutorial.
+The easiest way to run `snid` is to download the precompiled Binary from the Official Website and setup a Systemd Service for it. Compiling `snid` from Source it's possible but it involves installing the `go` Development Toolchain.
 
+## Installation 
+### Installation from Source (Preferred)
+First install the `go` Development Environment:
+
+#### Fedora Requirements
+Install GoLang:
+```
+dnf install go
+```
+
+#### Debian/Ubuntu Requirements
+```
+apt install golang-go
+```
+
+#### Build and Install
+Build the Program and install it in the `/opt/snid` Folder:
+```
+GOBIN="/opt/snid" go install src.agwa.name/snid@latest
+```
+
+### Installation using the provided Binary
 First Download the Program:
 ```
 # Run these Commands on the Podman Host as <root>
@@ -93,63 +115,15 @@ wget https://github.com/AGWA/snid/releases/download/v0.3.0/snid-v0.3.0-linux-amd
 chmod +x /opt/snid/snid
 ```
 
-## Rootfull Service
+## Systemd Services
+The `snid` Program itself can be run as Normal User, which is an enhancement Security-Wise.
+However, the Routes must already be correctly in place (set up by root).
 
-This Probably requires (also as Root) in `/etc/sysctl.conf`:
-```
-net.ipv6.ip_nonlocal_bind=1
-```
-
-Then create a Systemd Service for it in `/etc/systemd/system/snid.service`
-```
-# To get SNID to work:
-# Backend CIDR is supposed to be:
-# - Backend CIDR: 2001:db8:0000:0001:0000:0000:0001:0001/112 (2001:db8:0000:0001:0000:0000:0001:0000 ... 2001:db8:0000:0001:0000:0000:0001:ffff)
-#
-# Convert IPv4 Address to IPv6 Address Representation: 
-# - https://www.agwa.name/blog/post/using_sni_proxying_and_ipv6_to_share_port_443
-# - https://www.rfc-editor.org/rfc/rfc6052
-# - https://github.com/luckylinux/ipv6-decode-ipv4-address
-
-[Unit]
-Description=SNID Service
-
-[Service]
-# Running as rootless does NOT appear to work, even when adding AmbientCapabilities=CAP_NET_BIND_SERVICE
-User=root
-ExecStartPre=/bin/bash -c 'sleep 10'
-ExecStart=/bin/bash -c 'cd /opt/snid && ip route replace local 64:ff9b:1::/96 dev lo && ./snid -listen tcp:172.16.1.10:443 -mode nat46 -nat46-prefix 64:ff9b:1:: -backend-cidr 2001:db8:0000:0001:0000:0000:0001:0001/112'
-ExecStop=/bin/bash -c 'cd /opt/snid && ip route del local 64:ff9b:1::/96 dev lo'
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Reload Systemd, enable and Start the Service:
-```
-systemctl daemon-reload
-systemctl enable snid.service
-systemctl restart snid.service
-systemctl status snid.service
-```
-
-Check that no Errors occurred !
-
-## Rootless Service
-An enhancement of the original `/etc/systemd/system/snid.service` can be done, by splitting up the Service in two Parts:
+This can be achieved by writing the Service in two Parts:
 - Routes Setup Service (requires Root Privileges): `/etc/systemd/system/snid-routes.service`
 - Server Service (can be run as Normal User): `/etc/systemd/system/snid-server.service`
 
-Since the Routes are Setup in less than a Second and, after that, `snid` is run as Normal User, the attack Surface is minimized. Even better would be to run the Service as a User which is DIFFERENT from the User Running `podman` (to ensure that the Files owned by `podman` CANNOT be accessed in case `snid` is compromized).
-
-Of course this requires (but should be already in Place, since the Rootless Containers require it already) in `/etc/sysctl.conf`:
-```
-net.ipv4.ip_unprivileged_port_start=80
-net.ipv4.ping_group_range=0 2000000
-kernel.unprivileged_userns_clone=1
-
-net.ipv6.ip_nonlocal_bind=1
-```
+Since the Routes are Setup in less than a Second and, after that, `snid` is run as Normal User, the attack Surface is minimized. Even better is to run the Service as a User which is DIFFERENT from the User Running `podman` (to ensure that the Files owned by `podman` CANNOT be accessed in case `snid` is compromized).
 
 Furthermore concerning the User Account Setup (it is preferable to use a different User compared to the one running the Podman Containers, for the Reasons outlined above):
 ```
@@ -157,6 +131,22 @@ groupadd snid
 useradd --shell /usr/sbin/nologin -g snid --base-dir /opt/snid snid
 chown snid:snid /opt/snid/snid
 chmod 0770 /opt/snid/snid
+```
+
+Of course this requires (but should be already in Place, since the Rootless Containers require it already) in `/etc/sysctl.conf`:
+```
+# Required to bind to port 80/443
+# (probably already in Place in order for rootless Podman traefik/caddy/... Containers to work correctly)
+net.ipv4.ip_unprivileged_port_start=80
+
+# Required to bind to a non-local IPv6 Address
+net.ipv6.ip_nonlocal_bind=1
+
+# (Unrelated to this Specific Setup - Allow Containers to Ping)
+net.ipv4.ping_group_range=0 2000000
+
+# (Unrelated to this Specific Setup - Needed by Rootless Podman)
+kernel.unprivileged_userns_clone=1
 ```
 
 `/etc/systemd/system/snid-routes.service`:

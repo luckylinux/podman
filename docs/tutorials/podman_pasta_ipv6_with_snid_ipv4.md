@@ -538,7 +538,7 @@ journalctl -xeu snid.service
 You might also want to check the `caddy` Proxy Logs for other Clues:
 ```
 podman logs caddy
-cat ~/containers/log/caddy/${HOSTNAME}/access.json | jq -r
+cat ~/containers/log/whoami-caddy/${HOSTNAME}/access.json | jq -r
 ```
 
 # Translating IPv6 to IPv4 based on Logs

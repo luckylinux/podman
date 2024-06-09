@@ -59,7 +59,7 @@ Each Application will furthermore have an IPv6 Address, to which it will bind th
 
 The Applications are supposed to be located within the following Network (corresponding to `snid` Backend CIDR Configuration): `2001:db8:0000:0001:0000:0000:0001:0000/112` (`2001:db8:0000:0001:0000:0000:0001:0000` ... `2001:db8:0000:0001:0000:0000:0001:ffff`). Other IPv6 Addresses are also Possible, but then you must adjust `snid` Backend CIDR accordingly !
 
-For simplicity, the Application (`application01.MYDOMAIN.TLD`) described in this Tutorial will have `APPLICATION_IPV6_ADDRESS="2001:db8:0000:0001:0000:0000:0001:0001"`.
+For simplicity, the Application (`HOSTNAME="whoami.MYDOMAIN.TLD"`) described in this Tutorial will have `APPLICATION_IPV6_ADDRESS="2001:db8:0000:0001:0000:0000:0001:0001"`.
 
 One Remote End-Client (Laptop) is supposed to have IPv4 Address:
 - Public IPv4 Address: `192.0.2.100` (https://www.rfc-editor.org/rfc/rfc5737)
@@ -265,6 +265,7 @@ In order to simplify the Setup, it is Proposed to store the IP Address in an `.e
 
 ```
 echo 'APPLICATION_IPV6_ADDRESS="2001:db8:0000:0001:0000:0000:0001:0001"' >> .env
+echo 'HOSTNAME=whoami.MYDOMAIN.TLD' >> .env
 ```
 
 In this way, the `compose.yml` can be evaluated with the `${APPLICATION_IPV6_ADDRESS}` Variable replaced by its Value, by running:
@@ -368,7 +369,7 @@ services:
 # Caddy Proxy Configuration
 For Simple Configurations of Applications and automatically generating a SSL Certificate using Letsencrypt with the HTTP(S) Challenge, one can just define `command` within the `compose.yml` File to something like:
 ```
-command: reverse-proxy --from application01.MYDOMAIN.TLD --to 'http//[::1]:8080'
+command: reverse-proxy --from ${HOSTNAME} --to 'http//[::1]:8080'
 ```
 
 For semi-automated Setups, one can use the `lucaslorentz/caddy-docker-proxy` Docker Image, which allows to set Caddy Options directly within the `compose.yml` File.
@@ -403,10 +404,10 @@ localhost {
 	reverse_proxy /api/* localhost:9001
 }
 
-application01.MYDOMAIN.TLD {
+${HOSTNAME} {
         tls /certificates/MYDOMAIN.TLD/fullchain.pem /certificates/MYDOMAIN.TLD/privkey.pem
         log {
-		output file /var/log/application01.MYDOMAIN.TLD/access.json {
+		output file /var/log/${HOSTNAME}/access.json {
 			roll_size 100MiB
 			roll_keep 5000
 			roll_keep_for 720h
@@ -546,33 +547,33 @@ Thee `-vvv` Argument is only to Obtain more Verbose Output (which can be Useful 
 ## IPv6 Testing
 IPv6 HTTPS Test (do NOT follow redirects) should yield a `200` Status Response (`OK`):
 ```
-curl -vvv -6 https://application01.MYDOMAIN.TLD
+curl -vvv -6 https://${HOSTNAME}
 ```
 
 IPv6 HTTP Test (do NOT follow redirects) should yield a `308` Status Response (`Permanent Redirect`):
 ```
-curl -vvv -6 http://application01.MYDOMAIN.TLD
+curl -vvv -6 http://${HOSTNAME}
 ```
 
 IPv6 HTTP Test (follow redirects) should yield a `200` Status Response (`OK`):
 ```
-curl -vvv -6 -L http://application01.MYDOMAIN.TLD
+curl -vvv -6 -L http://${HOSTNAME}
 ```
 
 ## IPv4 Testing
 IPv4 HTTPS Test (do NOT follow redirects) should yield a `200` Status Response (`OK`):
 ```
-curl -vvv -4 https://application01.MYDOMAIN.TLD
+curl -vvv -4 https://${HOSTNAME}
 ```
 
 IPv4 HTTP Test (do NOT follow redirects) should yield a `308` Status Response (`Permanent Redirect`):
 ```
-curl -vvv -4 https://application01.MYDOMAIN.TLD
+curl -vvv -4 https://${HOSTNAME}
 ```
 
 IPv4 HTTP Test (follow redirects) should yield a `200` Status Response (`OK`):
 ```
-curl -vvv -4 -L http://application01.MYDOMAIN.TLD
+curl -vvv -4 -L http://${HOSTNAME}
 ```
 
 In case of Issues in the IPv4 Test, check the `snid` Service Status for Clues:
@@ -584,7 +585,7 @@ journalctl -xeu snid.service
 You might also want to check the `caddy` Proxy Logs for other Clues:
 ```
 podman logs caddy
-cat ~/containers/log/caddy/application01.MYDOMAIN.TLD/access.json | jq -r
+cat ~/containers/log/caddy/${HOSTNAME}/access.json | jq -r
 ```
 
 # Translating IPv6 to IPv4 based on Logs

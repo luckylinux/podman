@@ -88,15 +88,18 @@ The easiest way to run `snid` is to download the precompiled Binary from the Off
 In case where multiple `snid` Servers are deployed, it is possible to use several portions of the `64:ff9b:1::/48` Address Space (`0064:ff9b:0001:0000:0000:0000:0000:0000` ... `0064:ff9b:0001:ffff:ffff:ffff:ffff:ffff`), consistently with [RFC 8215](https://datatracker.ietf.org/doc/html/rfc8215#section-5).
 
 Example:
-- `snid1`: `nat46-prefix = 64:ff9b:1::1:0:0/96`:
+- `snid1` Settings for `nat46-prefix`:
+  - Minimized Network: `64:ff9b:1::1:0:0/96`:
   - Expanded Network: `0064:ff9b:0001:0000:0000:0001:0000:0000/96`
   - First Address: `0064:ff9b:0001:0000:0000:0001:0000:0000`
   - Last Address: `0064:ff9b:0001:0000:0000:0001:ffff:ffff`)
-- `snid2`: `nat46-prefix = 64:ff9b:1::2:0:0/96`
+- `snid2` Settings for `nat46-prefix`
+  - Minimized Network: `64:ff9b:1::2:0:0/96`
   - Expanded Network: `0064:ff9b:0001:0000:0000:0002:0000:0000/96`
   - First Address: `0064:ff9b:0001:0000:0000:0002:0000:0000`
   - Last Address: `0064:ff9b:0001:0000:0000:0002:ffff:ffff`)
-- `snid3`: `nat46-prefix = 64:ff9b:1::3:0:0/96`
+- `snid3` Settings for `nat46-prefix`: 
+  - Minimized Network: `64:ff9b:1::3:0:0/96`
   - Expanded Network: `0064:ff9b:0001:0000:0000:0003:0000:0000/96`
   - First Address: `0064:ff9b:0001:0000:0000:0003:0000:0000`
   - Last Address: `0064:ff9b:0001:0000:0000:0003:ffff:ffff`)

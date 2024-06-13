@@ -85,26 +85,6 @@ Other Setups where `snid` is running e.g. in a separate KVM Virtual Machine are 
 
 The easiest way to run `snid` is to download the precompiled Binary from the Official Website and setup a Systemd Service for it. Compiling `snid` from Source it's possible but it involves installing the `go` Development Toolchain.
 
-In case where multiple `snid` Servers are deployed, it is possible to use several portions of the `64:ff9b:1::/48` Address Space (`0064:ff9b:0001:0000:0000:0000:0000:0000` ... `0064:ff9b:0001:ffff:ffff:ffff:ffff:ffff`), consistently with [RFC 8215](https://datatracker.ietf.org/doc/html/rfc8215#section-5).
-
-Example:
-- `snid1` Settings for `nat46-prefix`:
-  - Minimized Network: `64:ff9b:1::1:0:0/96`:
-  - Expanded Network: `0064:ff9b:0001:0000:0000:0001:0000:0000/96`
-  - First Address: `0064:ff9b:0001:0000:0000:0001:0000:0000`
-  - Last Address: `0064:ff9b:0001:0000:0000:0001:ffff:ffff`)
-- `snid2` Settings for `nat46-prefix`
-  - Minimized Network: `64:ff9b:1::2:0:0/96`
-  - Expanded Network: `0064:ff9b:0001:0000:0000:0002:0000:0000/96`
-  - First Address: `0064:ff9b:0001:0000:0000:0002:0000:0000`
-  - Last Address: `0064:ff9b:0001:0000:0000:0002:ffff:ffff`)
-- `snid3` Settings for `nat46-prefix`: 
-  - Minimized Network: `64:ff9b:1::3:0:0/96`
-  - Expanded Network: `0064:ff9b:0001:0000:0000:0003:0000:0000/96`
-  - First Address: `0064:ff9b:0001:0000:0000:0003:0000:0000`
-  - Last Address: `0064:ff9b:0001:0000:0000:0003:ffff:ffff`)
-- ...
-
 ## Installation 
 ### Installation from Source (Preferred)
 First install the `go` Development Environment:
@@ -136,7 +116,8 @@ wget https://github.com/AGWA/snid/releases/download/v0.3.0/snid-v0.3.0-linux-amd
 chmod +x /opt/snid/snid
 ```
 
-## Systemd Services
+## Single snid on Localhost
+### Systemd Services
 The `snid` Program itself can be run as Normal User, which is an enhancement Security-Wise.
 However, the Routes must already be correctly in place (set up by root).
 
@@ -228,7 +209,57 @@ systemctl restart snid-server.service
 systemctl status snid-server.service
 ```
 
+
+## Multiple snid on Remote Servers
+In case where multiple `snid` Servers are deployed, it is possible to use several portions of the `64:ff9b:1::/48` Address Space (`0064:ff9b:0001:0000:0000:0000:0000:0000` ... `0064:ff9b:0001:ffff:ffff:ffff:ffff:ffff`), consistently with [RFC 8215](https://datatracker.ietf.org/doc/html/rfc8215#section-5).
+
+Example:
+- `snid1` Settings for `nat46-prefix`:
+  - SNID Server Address: `2001:db8:0000:0001:0000:0000:0001:0066`
+  - Minimized Network: `64:ff9b:1::1:0:0/96`
+  - Expanded Network: `0064:ff9b:0001:0000:0000:0001:0000:0000/96`
+  - First Address: `0064:ff9b:0001:0000:0000:0001:0000:0000`
+  - Last Address: `0064:ff9b:0001:0000:0000:0001:ffff:ffff`)
+- `snid2` Settings for `nat46-prefix`
+  - SNID Server Address: `2001:db8:0000:0001:0000:0000:0001:0067`
+  - Minimized Network: `64:ff9b:1::2:0:0/96`
+  - Expanded Network: `0064:ff9b:0001:0000:0000:0002:0000:0000/96`
+  - First Address: `0064:ff9b:0001:0000:0000:0002:0000:0000`
+  - Last Address: `0064:ff9b:0001:0000:0000:0002:ffff:ffff`)
+- `snid3` Settings for `nat46-prefix`: 
+  - SNID Server Address: `2001:db8:0000:0001:0000:0000:0001:0068`
+  - Minimized Network: `64:ff9b:1::3:0:0/96`
+  - Expanded Network: `0064:ff9b:0001:0000:0000:0003:0000:0000/96`
+  - First Address: `0064:ff9b:0001:0000:0000:0003:0000:0000`
+  - Last Address: `0064:ff9b:0001:0000:0000:0003:ffff:ffff`)
+- ...
+
+### Systemd Services
+Refer to the Previous section for Localhost or [this](https://github.com/luckylinux/podman-network-setup/).
+
+### Routes from Podman Host to snid Servers
+On the Podman Host a Route must be configured TO the `snid` Remote Servers in order to send back Traffic to the Client.
+```
+# Send back traffic to snid1
+ip -6 route replace 64:ff9b:1::1:0:0/96 via 2001:db8:0000:0001:0000:0000:0001:0066
+
+# Send back traffic to snid2
+ip -6 route replace 64:ff9b:1::2:0:0/96 via 2001:db8:0000:0001:0000:0000:0001:0067
+```
+
+### Routes from snid Servers to Podman Host
+On each `snid` Server a Route must be configured TO the `podman` Host in order for the original HTTP(s) Request to be forwarded correctly:
+```
+# Send traffic to Podman Host
+ip -6 route replace 2001:db8:0000:0001:0000:0000:ff15:0000/112 via 2001:db8:0000:0001:0000:0000:0000:0100
+```
+
+### Local Routes on snid Servers
+Same as the Routes of the `nat46` prefix for Localhost.
+
 # IPv6 Networking Setup
+!! TO BE UPDATED - THE IP ADDRESSES CAN BE CONFIGURED IN USER NAMESPACES BUT ROUTES MUST BE SETUP AS ROOT !!
+
 > **Warning**  
 > 
 > Each Application has a different IPv6 Address MUST FIRST BE REGISTED ON THE HOST as well. It is NOT possible to just start the Container and expect it to bind to the IP Address configured in `compose.yml` if the IP Address was not registered on the Host in the first Place !

@@ -214,36 +214,27 @@ systemctl status snid-server.service
 In case where multiple `snid` Servers are deployed, it is possible to use several portions of the `64:ff9b:1::/48` Address Space (`0064:ff9b:0001:0000:0000:0000:0000:0000` ... `0064:ff9b:0001:ffff:ffff:ffff:ffff:ffff`), consistently with [RFC 8215](https://datatracker.ietf.org/doc/html/rfc8215#section-5).
 
 Example:
-- `snid1` Settings for `nat46-prefix`:
-  - SNID Server Address: `2001:db8:0000:0001:0000:0000:0001:0066`
-  - Minimized Network: `64:ff9b:1::1:0:0/96`
-  - Expanded Network: `0064:ff9b:0001:0000:0000:0001:0000:0000/96`
-  - First Address: `0064:ff9b:0001:0000:0000:0001:0000:0000`
-  - Last Address: `0064:ff9b:0001:0000:0000:0001:ffff:ffff`)
-- `snid2` Settings for `nat46-prefix`
-  - SNID Server Address: `2001:db8:0000:0001:0000:0000:0001:0067`
-  - Minimized Network: `64:ff9b:1::2:0:0/96`
-  - Expanded Network: `0064:ff9b:0001:0000:0000:0002:0000:0000/96`
-  - First Address: `0064:ff9b:0001:0000:0000:0002:0000:0000`
-  - Last Address: `0064:ff9b:0001:0000:0000:0002:ffff:ffff`)
-- `snid3` Settings for `nat46-prefix`: 
-  - SNID Server Address: `2001:db8:0000:0001:0000:0000:0001:0068`
-  - Minimized Network: `64:ff9b:1::3:0:0/96`
-  - Expanded Network: `0064:ff9b:0001:0000:0000:0003:0000:0000/96`
-  - First Address: `0064:ff9b:0001:0000:0000:0003:0000:0000`
-  - Last Address: `0064:ff9b:0001:0000:0000:0003:ffff:ffff`)
-- ...
+|Parameter|`snid1`|`snid2`|`snid3`|...|
+| --------|-------|-------|-------|---|
+|SNID Server Main Address|`2001:db8:0000:0001:0000:0000:0001:0066`|`2001:db8:0000:0001:0000:0000:0001:0067`|`2001:db8:0000:0001:0000:0000:0001:0068`|...|
+|Minimized `nat46-prefix` Network|`64:ff9b:1::1:0:0/96`|`64:ff9b:1::2:0:0/96`|`64:ff9b:1::3:0:0/96`|...|
+|Expanded `nat46-prefix` Network|`0064:ff9b:0001:0000:0000:0001:0000:0000/96`|`0064:ff9b:0001:0000:0000:0002:0000:0000/96`|`0064:ff9b:0001:0000:0000:0003:0000:0000/96`|...|
+|First `nat46-prefix` Address|`0064:ff9b:0001:0000:0000:0001:0000:0000`|`0064:ff9b:0001:0000:0000:0002:0000:0000`|`0064:ff9b:0001:0000:0000:0003:0000:0000`|...|
+|Last `nat46-prefix` Address|`0064:ff9b:0001:0000:0000:0001:ffff:ffff`|`0064:ff9b:0001:0000:0000:0002:ffff:ffff`|`0064:ff9b:0001:0000:0000:0003:ffff:ffff`|...|
 
 ### Systemd Services
 Refer to the Previous section for Localhost or [this](https://github.com/luckylinux/podman-network-setup/).
 
 ### Routes from Podman Host to snid Servers
 On the Podman Host a Route must be configured TO the `snid` Remote Servers in order to send back Traffic to the Client.
-```
-# Send back traffic to snid1
-ip -6 route replace 64:ff9b:1::1:0:0/96 via 2001:db8:0000:0001:0000:0000:0001:0066
 
-# Send back traffic to snid2
+Send back traffic to `snid1`:
+```
+ip -6 route replace 64:ff9b:1::1:0:0/96 via 2001:db8:0000:0001:0000:0000:0001:0066
+```
+
+Send back traffic to `snid2`:
+```
 ip -6 route replace 64:ff9b:1::2:0:0/96 via 2001:db8:0000:0001:0000:0000:0001:0067
 ```
 

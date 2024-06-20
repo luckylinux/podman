@@ -245,6 +245,20 @@ On each `snid` Server a Route must be configured TO the `podman` Host in order f
 ip -6 route replace 2001:db8:0000:0001:0000:0000:ff15:0000/112 via 2001:db8:0000:0001:0000:0000:0000:0100
 ```
 
+A better way when the snids share the same Subnet as the Services (up to ~ 100 IPv6 Hosts, this will NOT scale well for very large Deployments due to the limits of Number of Hosts in IPv6 NDP Tables) might be to use [ndppd](https://github.com/DanielAdolfsson/ndppd) to answer neighbor discovery requests.
+
+Example Configuration:
+```
+proxy eth0 {
+	router no
+	rule 2001:db8:0000:0001:0000:0000:ff15:0000/112 {
+		static
+	}
+}
+```
+
+In the case, where snid runs somewhere else, there is no need for this, since the routers will take care of it.
+
 ### Local Routes on snid Servers
 Same as the Routes of the `nat46` prefix for Localhost.
 

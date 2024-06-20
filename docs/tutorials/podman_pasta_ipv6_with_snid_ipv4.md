@@ -91,25 +91,25 @@ First install the `go` Development Environment:
 
 #### Fedora Requirements
 Install GoLang:
-```
+```bash
 dnf install go
 ```
 
 #### Debian/Ubuntu Requirements
-```
+```bash
 apt install golang-go
 ```
 
 #### Build and Install
 Build the Program and install it in the `/opt/snid` Folder:
-```
+```bash
 mkdir -p /opt/snid
 GOBIN="/opt/snid" go install src.agwa.name/snid@latest
 ```
 
 ### Installation using the provided Binary
 First Download the Program:
-```
+```bash
 # Run these Commands on the Podman Host as <root>
 mkdir -p /opt/snid
 wget https://github.com/AGWA/snid/releases/download/v0.3.0/snid-v0.3.0-linux-amd64 -O /opt/snid/snid
@@ -128,7 +128,7 @@ This can be achieved by writing the Service in two Parts:
 Since the Routes are Setup in less than a Second and, after that, `snid` is run as Normal User, the attack Surface is minimized. Even better is to run the Service as a User which is DIFFERENT from the User Running `podman` (to ensure that the Files owned by `podman` CANNOT be accessed in case `snid` is compromized).
 
 Furthermore concerning the User Account Setup (it is preferable to use a different User compared to the one running the Podman Containers, for the Reasons outlined above):
-```
+```bash
 groupadd snid
 useradd --shell /usr/sbin/nologin -g snid -c snid --base-dir /opt snid
 chown snid:snid /opt/snid/snid
@@ -136,7 +136,7 @@ chmod 0770 /opt/snid/snid
 ```
 
 Of course this requires (but should be already in Place, since the Rootless Containers require it already) in `/etc/sysctl.conf`:
-```
+```bash
 # Required to bind to port 80/443
 # (probably already in Place in order for rootless Podman traefik/caddy/... Containers to work correctly)
 net.ipv4.ip_unprivileged_port_start=80
@@ -152,7 +152,7 @@ kernel.unprivileged_userns_clone=1
 ```
 
 `/etc/systemd/system/snid-routes.service`:
-```
+```bash
 # To get SNID to work:
 # - ip route add local the_nat46_prefix/96 dev lo
 # - nmcli connection modify lo +ipv6.routes "64:ff9b:1::/96 dev lo" -> NOT WORKING
@@ -179,7 +179,7 @@ WantedBy=multi-user.target
 For the Service Part, we just put a Condition that requires `snid-routes.service` to be Run before (`Requires`).
 
 `/etc/systemd/system/snid-server.service`:
-```
+```bash
 [Unit]
 Description=SNID Server Service
 Requires=snid-routes.service
@@ -191,20 +191,20 @@ ExecStart=/bin/bash -c 'cd /opt/snid && ./snid -listen tcp:172.16.1.10:443 -mode
 
 [Install]
 WantedBy=multi-user.target
-```
+```bash
 
 Reload Systemd Daemon
-```
+```bash
 systemctl daemon-reload
 ```
 
 Enable Services
-```
+```bash
 systemctl enable --now snid-routes.service snid-server.service
 ```
 
 Check for Errors:
-```
+```bash
 systemctl restart snid-server.service
 systemctl status snid-server.service
 ```
@@ -229,18 +229,18 @@ Refer to the Previous section for Localhost or [this](https://github.com/luckyli
 On the Podman Host a Route must be configured TO the `snid` Remote Servers in order to send back Traffic to the Client.
 
 Send back traffic to `snid1`:
-```
+```bash
 ip -6 route replace 64:ff9b:1::1:0:0/96 via 2001:db8:0000:0001:0000:0000:0001:0066
 ```
 
 Send back traffic to `snid2`:
-```
+```bash
 ip -6 route replace 64:ff9b:1::2:0:0/96 via 2001:db8:0000:0001:0000:0000:0001:0067
 ```
 
 ### Routes from snid Servers to Podman Host
 On each `snid` Server a Route must be configured TO the `podman` Host in order for the original HTTP(s) Request to be forwarded correctly:
-```
+```bash
 # Send traffic to Podman Host
 ip -6 route replace 2001:db8:0000:0001:0000:0000:ff15:0000/112 via 2001:db8:0000:0001:0000:0000:0000:0100
 ```
@@ -256,12 +256,12 @@ Same as the Routes of the `nat46` prefix for Localhost.
 > Each Application has a different IPv6 Address MUST FIRST BE REGISTED ON THE HOST as well. It is NOT possible to just start the Container and expect it to bind to the IP Address configured in `compose.yml` if the IP Address was not registered on the Host in the first Place !
 
 General:
-```
+```bash
 ip -6 addr add 2001:db8:0000:0001:0000:0000:0001:0001/64 dev ens18 
 ```
 
 For Fedora:
-```
+```bash
 nmcli connection edit ens18
 set ipv6.address
 2001:db8:0000:0001:0000:0000:0001:0001
@@ -271,7 +271,7 @@ systemctl restart NetworkManager
 ```
 
 For Debian/Ubuntu add in `/etc/network/interfaces` (or `/etc/network/interfaces.d/<my-interface>`) a line within the relevant Interface Block:
-```
+```bash
 ip -6 addr add 2001:db8:0000:0001:0000:0000:0001:0001/64 dev ens18
 ```
 
@@ -283,13 +283,13 @@ Two different Approaches for the Compose File are Possible and both Work.
 
 In order to simplify the Setup, it is Proposed to store the IP Address in an `.env` File.
 
-```
+```bash
 echo 'APPLICATION_IPV6_ADDRESS="2001:db8:0000:0001:0000:0000:0001:0001"' >> .env
 echo 'HOSTNAME=whoami.MYDOMAIN.TLD' >> .env
 ```
 
 In this way, the `compose.yml` can be evaluated with the `${APPLICATION_IPV6_ADDRESS}` Variable replaced by its Value, by running:
-```
+```bash
 podman-compose config
 ```
 
@@ -297,7 +297,7 @@ podman-compose config
 In case of standard Setup (Caddy is managing the SSL/TLS Certificates by itself using the HTTP Challenge, default Log Settings, ...) the `compose.yml` File is quite Short and there is NO NEED for a `Caddyfile`.
 
 `compose.yml` File:
-```
+```YAML
 services:
   whoami-caddy:
     image: caddy:latest
@@ -326,7 +326,7 @@ In case of special Requirements (e.g. you are managing the Certificates using ex
 You will also (probably) require a `Caddyfile` to setup the Custom Directives.
 
 `compose.yml` File:
-```
+```YAML
 services:
   whoami-caddy:
     image: caddy:latest
@@ -392,7 +392,7 @@ To check that The Services bind to the Correct IP Address and Port:
 - IPv6 Only: `ss -nlt6` (or `netstat -Wan -t6`)
 
 Example Output for `ss -nlt6`:
-```
+```bash
 State       Recv-Q      Send-Q                        Local Address:Port             Peer Address:Port      
 LISTEN      0           128                [2001:db8:0000:0001::1:1]:80                       [::]:*         
 LISTEN      0           128                [2001:db8:0000:0001::1:1]:443                      [::]:*         
@@ -403,7 +403,7 @@ LISTEN      0           128                                    [::]:22          
 ```
 
 Example Output for `netstat -Wan -t6`:
-```
+```bash
 Active Internet connections (servers and established)
 Proto Recv-Q Send-Q Local Address           Foreign Address         State      
 tcp6       0      0 2001:db8:0000:0001::1:1:80 :::*                    LISTEN     
@@ -417,7 +417,7 @@ tcp6       0      0 :::22                   :::*                    LISTEN
 # Caddy Proxy Configuration
 ## Using Default Caddy Configuration
 For Simple Configurations of Applications and automatically generating a SSL Certificate using Letsencrypt with the HTTP Challenge, one can just define `command` within the `compose.yml` File to something like:
-```
+```bash
 command: reverse-proxy --from ${HOSTNAME} --to 'http//[::1]:8080'
 ```
 
@@ -433,7 +433,7 @@ This is also due to the Fact that I am self-managing the Letsencrypt Certificate
 Your mileage may vary :).
 
 `Caddyfile`:
-```
+```Caddyfile
 # Example and Guide
 # https://caddyserver.com/docs/caddyfile/options
 
@@ -491,7 +491,7 @@ The `snid` Service does NOT handle HTTP (non-HTTPS) Requests and does NOT bind t
 This Problem (IPv4 HTTP -> HTTPS Redirects) can easily be solved by using a one-off (for the entire Podman Host) Caddy Container.
 
 `compose.yml`:
-```
+```YAML
 services:
   redirect-http-ipv4-caddy:
     image: caddy:latest
@@ -521,7 +521,7 @@ services:
 ```
 
 `Caddyfile`:
-```
+```Caddyfile
 # Example and Guide
 # https://caddyserver.com/docs/caddyfile/options
 
@@ -560,12 +560,12 @@ See [Caddy Documentation](https://caddyserver.com/docs/automatic-https).
 
 # Run the Application
 Simply Run
-```
+```bash
 podman-compose up -d
 ```
 
 In case of Issues, you might want to Debug with DEBUG log level and disabling detached mode:
-```
+```bash
 podman-compose --podman-run-args="--log-level=debug" up
 ```
 
@@ -580,44 +580,44 @@ Thee `-vvv` Argument is only to Obtain more Verbose Output (which can be Useful 
 
 ## IPv6 Testing
 IPv6 HTTPS Test (do NOT follow redirects) should yield a `200` Status Response (`OK`):
-```
+```bash
 curl -vvv -6 https://${HOSTNAME}
 ```
 
 IPv6 HTTP Test (do NOT follow redirects) should yield a `308` Status Response (`Permanent Redirect`):
-```
+```bash
 curl -vvv -6 http://${HOSTNAME}
 ```
 
 IPv6 HTTP Test (follow redirects) should yield a `200` Status Response (`OK`):
-```
+```bash
 curl -vvv -6 -L http://${HOSTNAME}
 ```
 
 ## IPv4 Testing
 IPv4 HTTPS Test (do NOT follow redirects) should yield a `200` Status Response (`OK`):
-```
+```bash
 curl -vvv -4 https://${HOSTNAME}
 ```
 
 IPv4 HTTP Test (do NOT follow redirects) should yield a `308` Status Response (`Permanent Redirect`):
-```
+```bash
 curl -vvv -4 https://${HOSTNAME}
 ```
 
 IPv4 HTTP Test (follow redirects) should yield a `200` Status Response (`OK`):
-```
+```bash
 curl -vvv -4 -L http://${HOSTNAME}
 ```
 
 In case of Issues in the IPv4 Test, check the `snid` Service Status for Clues:
-```
+```bash
 systemctl status snid.service
 journalctl -xeu snid.service
 ```
 
 You might also want to check the `caddy` Proxy Logs for other Clues:
-```
+```bash
 podman logs caddy
 cat ~/containers/log/whoami-caddy/${HOSTNAME}/access.json | jq -r
 ```

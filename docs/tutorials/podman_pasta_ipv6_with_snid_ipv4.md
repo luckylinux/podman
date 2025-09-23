@@ -5,7 +5,9 @@ This setup assigns a single IPv6 Address to each Application running on the Podm
 
 An Application can be defined as a set of Containers that share the same Network Namespace.
 
-An Application has all of its Containers located within the same `compose.yml` File.
+An Application has all of its Containers located within:
+a. The same `compose.yml` File
+b. Several Quadlet Files belonging to the same Pod
 
 Typically, for a Web Application, this includes the following:
 - A Proxy Server (Caddy)
@@ -26,16 +28,16 @@ A similar Result can probably be achieved using Quadlets or Podlets instead of `
 This Tutorial has been written while working on Fedora 40 with Podman 5.0.3 (with recent update to Podman 5.1.0).
 
 # Pasta Networking
-> **Warning**  
+> **Warning**
 > 
 > While `pasta` is the Default Networking for rootless `podman` since Podman 5.0, this is NOT the case for `podman-compose` ! Indeed `podman-compose` (at least until and including Version 1.1.0) will default to create a Bridge Network, if `network_mode` is NOT set to `pasta:[list_of_options_for_pasta]`
 
-> **Warning**  
+> **Warning**
 > 
 > `traefik` does NOT appear to be working with anything besides rootlessport `bridge` !
 > I tried to use `pasta` with `traefik` Container and I kept getting a `service \"dashboard\" error: unable to find the IP address for the container \"/traefik\": the server is ignored).`.
 
-> **Note**  
+> **Note**
 >
 > `podman` does indeed NOT appear to register any IPAddress when using `pasta` Networking, based on `podman inspect <container>`, which might explain why `traefik` is failing.
 
@@ -265,7 +267,7 @@ Same as the Routes of the `nat46` prefix for Localhost.
 # IPv6 Networking Setup
 !! TO BE UPDATED - THE IP ADDRESSES CAN BE CONFIGURED IN USER NAMESPACES BUT ROUTES MUST BE SETUP AS ROOT !!
 
-> **Warning**  
+> **Warning**
 > 
 > Each Application has a different IPv6 Address MUST FIRST BE REGISTED ON THE HOST as well. It is NOT possible to just start the Container and expect it to bind to the IP Address configured in `compose.yml` if the IP Address was not registered on the Host in the first Place !
 
@@ -308,6 +310,7 @@ podman-compose config
 ```
 
 ## Using Default Caddy Configuration
+### Compose Setup
 In case of standard Setup (Caddy is managing the SSL/TLS Certificates by itself using the HTTP Challenge, default Log Settings, ...) the `compose.yml` File is quite Short and there is NO NEED for a `Caddyfile`.
 
 `compose.yml` File:
@@ -334,7 +337,77 @@ volumes:
   caddy-data:
 ```
 
+### Quadlets Setup
+In case of standard Setup (Caddy is managing the SSL/TLS Certificates by itself using the HTTP Challenge, default Log Settings, ...) the Quadlets Files are quite Short and there is NO NEED for a `Caddyfile`.
+
+`whoami.pod` Quadlet:
+```
+[Pod]
+PodName=whoami
+
+# Ports
+PublishPort=[2001:db8:0000:0001:0000:0000:0001:0001]:80:80/tcp
+PublishPort=[2001:db8:0000:0001:0000:0000:0001:0001]:443:443/tcp
+PublishPort=[2001:db8:0000:0001:0000:0000:0001:0001]:443:443/udp
+
+# Network Mode
+# Network=pasta:--ipv6-only
+Network=pasta
+
+[Install]
+WantedBy=default.target
+```
+
+`whoami-caddy.container` Quadlet:
+```
+[Service]
+Restart=always
+
+[Container]
+ContainerName=whoami-caddy
+
+Pod=whoami.pod
+StartWithPod=true
+
+EnvironmentFile=.env
+
+Image=docker.io/library/caddy:latest
+Pull=missing
+
+NoNewPrivileges=true
+
+Volume=caddy-data:/data/caddy:z
+
+```
+
+`whoami-application.container` Quadlet:
+```
+[Unit]
+Description=Whoami Application Container
+Requires=whoami-caddy.service
+After=whoami-caddy.service
+
+[Service]
+Restart=always
+
+[Container]
+ContainerName=whoami-application
+
+Pod=whoami.pod
+StartWithPod=true
+
+Environment=WHOAMI_PORT_NUMBER=8080
+
+Image=docker.io/traefik/whoami
+
+Pull=missing
+
+Network=container:whoami-caddy
+```
+
+
 ## Using Customized Caddy Configuration
+### Compose Setup
 In case of special Requirements (e.g. you are managing the Certificates using external Tools such as `certbot`, you want custom Logging Directives, ...), then the `compose.yml` File will be a bit more Complex.
 
 You will also (probably) require a `Caddyfile` to setup the Custom Directives.
@@ -394,6 +467,83 @@ Note that:
 - When using the Normal Ports Section and the Pasta Minimal Line, `podman ps` will show the Open Ports in its Output.
 - When using the Pasta Extended Line, `podman ps` will NOT show the Open Ports in its Output. In fact, `podman inspect <container>` will NOT list the IP Addresses nor where the Ports are bound to. This works correctly, but the only way to examine if the Port is used is to run `ss -nlt6`.
 
+
+### Quadlets Setup
+In case of standard Setup (Caddy is managing the SSL/TLS Certificates by itself using the HTTP Challenge, default Log Settings, ...) the Quadlets Files are quite Short and there is NO NEED for a `Caddyfile`.
+
+`whoami.pod` Quadlet:
+```
+[Pod]
+PodName=whoami
+
+# Ports
+PublishPort=[2001:db8:0000:0001:0000:0000:0001:0001]:80:80/tcp
+PublishPort=[2001:db8:0000:0001:0000:0000:0001:0001]:443:443/tcp
+PublishPort=[2001:db8:0000:0001:0000:0000:0001:0001]:443:443/udp
+
+# Network Mode
+# Network=pasta:--ipv6-only
+Network=pasta
+
+[Install]
+WantedBy=default.target
+```
+
+`whoami-caddy.container` Quadlet:
+```
+[Service]
+Restart=always
+
+[Container]
+ContainerName=whoami-caddy
+
+Pod=whoami.pod
+StartWithPod=true
+
+Environment=CADDY_DOCKER_CADDYFILE_PATH=/etc/caddy/Caddyfile
+EnvironmentFile=.env
+
+Image=docker.io/library/caddy:latest
+Pull=missing
+
+NoNewPrivileges=true
+
+Volume=./Caddyfile:/etc/caddy/Caddyfile:ro,z
+Volume=/home/podman/containers/data/whoami/caddy:/data/caddy:z
+Volume=/home/podman/containers/log/whoami/caddy:/var/log:z
+Volume=/home/podman/containers/config/whoami/caddy:/config/caddy:z
+Volume=/home/podman/containers/certificates/letsencrypt:/certificates:ro,z
+
+```
+
+`whoami-application.container` Quadlet:
+```
+[Unit]
+Description=Whoami Application Container
+Requires=whoami-caddy.service
+After=whoami-caddy.service
+
+[Service]
+Restart=always
+
+[Container]
+ContainerName=whoami-application
+
+Pod=whoami.pod
+StartWithPod=true
+
+Environment=WHOAMI_PORT_NUMBER=8080
+
+Image=docker.io/traefik/whoami
+
+Pull=missing
+
+Network=container:whoami-caddy
+```
+
+Note that:
+- When using the Normal Ports Section and the Pasta Minimal Line, `podman ps` will show the Open Ports in its Output.
+- When using the Pasta Extended Line, `podman ps` will NOT show the Open Ports in its Output. In fact, `podman inspect <container>` will NOT list the IP Addresses nor where the Ports are bound to. This works correctly, but the only way to examine if the Port is used is to run `ss -nlt6`.
 
 ## Debugging Port Binding
 Note that `netstat` is deprecated. You **really** should be using `ss -nlt` instead.
@@ -504,6 +654,8 @@ The `snid` Service does NOT handle HTTP (non-HTTPS) Requests and does NOT bind t
 
 This Problem (IPv4 HTTP -> HTTPS Redirects) can easily be solved by using a one-off (for the entire Podman Host) Caddy Container.
 
+### Compose Setup
+
 `compose.yml`:
 ```YAML
 services:
@@ -533,6 +685,32 @@ services:
     environment:
       - CADDY_DOCKER_CADDYFILE_PATH=/etc/caddy/Caddyfile
 ```
+
+### Quadlet Setup
+`redirect-http-ipv4-caddy` Quadlet:
+```
+[Service]
+Restart=always
+
+[Container]
+ContainerName=redirect-http-ipv4-caddy
+
+Environment=CADDY_DOCKER_CADDYFILE_PATH=/etc/caddy/Caddyfile
+
+Image=docker.io/library/caddy:latest
+Pull=missing
+
+NoNewPrivileges=true
+
+PublishPort=172.16.1.10:80:80/tcp
+
+Volume=./Caddyfile:/etc/caddy/Caddyfile:ro,z
+Volume=/home/podman/containers/data/redirect-http-ipv4/caddy:/data/caddy:z
+Volume=/home/podman/containers/log/redirect-http-ipv4/caddy:/var/log:z
+Volume=/home/podman/containers/config/redirect-http-ipv4/caddy:/config/caddy:z
+```
+
+### Common Setup
 
 `Caddyfile`:
 ```Caddyfile
@@ -573,6 +751,7 @@ Note that:
 See [Caddy Documentation](https://caddyserver.com/docs/automatic-https).
 
 # Run the Application
+## Compose Setup
 Simply Run
 ```bash
 podman-compose up -d
@@ -581,6 +760,27 @@ podman-compose up -d
 In case of Issues, you might want to Debug with DEBUG log level and disabling detached mode:
 ```bash
 podman-compose --podman-run-args="--log-level=debug" up
+```
+
+## Quadlet Setup
+Simply regenerate the Systemd units:
+```
+systemctl --user daemon-reload
+```
+
+Then run:
+```
+systemctl --user restart redirect-http-ipv4-caddy.service
+```
+
+In case of Issues, you might want to Debug with DEBUG log level in the Quadlet Options:
+```
+PodmanArgs=--log-level=debug
+```
+
+If the Quadlets haven't been correctly generated, check with (and read the Documentation [here](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html#debugging-unit-files) and [here](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html#debugging-a-limited-set-of-unit-files)):
+```
+QUADLET_UNIT_DIRS=<Directory> /usr/lib/systemd/system-generators/podman-system-generator --user --dryrun
 ```
 
 # Testing

@@ -6,9 +6,8 @@ This setup assigns a single IPv6 Address to each Application running on the Podm
 An Application can be defined as a set of Containers that share the same Network Namespace.
 
 An Application has all of its Containers located within:
-
-a. The same `compose.yml` File
-b. Several Quadlet Files belonging to the same Pod
+1. The same `compose.yml` File
+2. Several Quadlet Files belonging to the same Pod
 
 Typically, for a Web Application, this includes the following:
 - A Proxy Server (Caddy)

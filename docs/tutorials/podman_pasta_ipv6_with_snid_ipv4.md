@@ -606,6 +606,9 @@ Your mileage may vary :).
     # (Optional) Debug Mode
     debug
 
+    # Disable Admin API
+    admin off
+
     # TLS Options
     # (Optional) Disable Certificates Management (only if SSL/TLS Certificates are managed by certbot or other external Tools)
     auto_https disable_certs
@@ -721,6 +724,9 @@ Volume=/home/podman/containers/config/redirect-http-ipv4/caddy:/config/caddy:z
 {
     # (Optional) Debug Mode
     debug
+
+    # Disable Admin API
+    admin off
 }
 
 # Redirect TCP IPV4 HTTP Requests to HTTPS
